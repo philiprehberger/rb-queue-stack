@@ -10,8 +10,8 @@ Gem::Specification.new do |spec|
 
   spec.summary = 'Thread-safe Queue and Stack with capacity limits and blocking operations'
   spec.description = 'Thread-safe queue and stack data structures with configurable capacity ' \
-                       'limits, blocking enqueue/dequeue with timeouts, and peek operations. ' \
-                       'Uses Mutex and ConditionVariable for safe concurrent access.'
+                     'limits, blocking enqueue/dequeue with timeouts, and peek operations. ' \
+                     'Uses Mutex and ConditionVariable for safe concurrent access.'
   spec.homepage = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-queue_stack'
   spec.license = 'MIT'
 
