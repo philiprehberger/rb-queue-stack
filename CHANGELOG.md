@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-03
+
+### Added
+- `drain` method to remove and return all items at once
+- `each` and `to_a` for non-destructive iteration
+- `close` / `closed?` for graceful shutdown semantics
+- `ClosedError` raised when adding to a closed container
+
 ## [0.1.5] - 2026-03-31
 
 ### Added

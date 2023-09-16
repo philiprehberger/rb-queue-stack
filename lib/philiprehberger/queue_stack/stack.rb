@@ -9,12 +9,15 @@ module Philiprehberger
     #   s.push('item')
     #   s.pop  # => 'item'
     class Stack
+      include Enumerable
+
       # Create a new stack.
       #
       # @param capacity [Integer, nil] maximum number of items (nil for unlimited)
       def initialize(capacity: nil)
         @items = []
         @capacity = capacity
+        @closed = false
         @mutex = Mutex.new
         @not_empty = ConditionVariable.new
         @not_full = ConditionVariable.new
@@ -24,20 +27,27 @@ module Philiprehberger
       #
       # @param item [Object] the item to push
       # @return [void]
+      # @raise [ClosedError] if the stack has been closed
       def push(item)
         @mutex.synchronize do
+          raise ClosedError, 'cannot push on a closed stack' if @closed
+
           @not_full.wait(@mutex) while @capacity && @items.length >= @capacity
           @items.push(item)
           @not_empty.signal
         end
       end
 
-      # Pop and return the top item. Blocks if empty.
+      # Pop and return the top item. Blocks if empty (returns nil if closed and empty).
       #
-      # @return [Object] the popped item
+      # @return [Object, nil] the popped item or nil if closed and empty
       def pop
         @mutex.synchronize do
-          @not_empty.wait(@mutex) while @items.empty?
+          while @items.empty?
+            return nil if @closed
+
+            @not_empty.wait(@mutex)
+          end
           item = @items.pop
           @not_full.signal
           item
@@ -52,6 +62,8 @@ module Philiprehberger
         deadline = Time.now + timeout
         @mutex.synchronize do
           while @items.empty?
+            return nil if @closed
+
             remaining = deadline - Time.now
             return nil if remaining <= 0
 
@@ -61,6 +73,57 @@ module Philiprehberger
           @not_full.signal
           item
         end
+      end
+
+      # Remove and return all items as an array (LIFO order, top first). Non-blocking.
+      #
+      # @return [Array] all items in LIFO order (top first)
+      def drain
+        @mutex.synchronize do
+          result = @items.reverse
+          @items.clear
+          @not_full.broadcast
+          result
+        end
+      end
+
+      # Iterate items without removing them (snapshot of current state, LIFO order).
+      # Returns an Enumerator if no block is given.
+      #
+      # @yield [item] each item in LIFO order (top first)
+      # @return [Enumerator, self]
+      def each(&block)
+        snapshot = @mutex.synchronize { @items.reverse }
+        return snapshot.each unless block
+
+        snapshot.each(&block)
+        self
+      end
+
+      # Return a snapshot of items as an array (LIFO order, top first).
+      #
+      # @return [Array]
+      def to_a
+        @mutex.synchronize { @items.reverse }
+      end
+
+      # Mark the stack as closed. New push calls will raise ClosedError.
+      # Existing items can still be popped. Wakes all waiting threads.
+      #
+      # @return [void]
+      def close
+        @mutex.synchronize do
+          @closed = true
+          @not_empty.broadcast
+          @not_full.broadcast
+        end
+      end
+
+      # Whether the stack has been closed.
+      #
+      # @return [Boolean]
+      def closed?
+        @mutex.synchronize { @closed }
       end
 
       # Peek at the top item without removing it.

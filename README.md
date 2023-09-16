@@ -66,6 +66,44 @@ s = Philiprehberger::QueueStack::Stack.new
 item = s.try_pop(timeout: 5)  # waits up to 5 seconds
 ```
 
+### Drain
+
+```ruby
+q = Philiprehberger::QueueStack::Queue.new
+q.enqueue('a')
+q.enqueue('b')
+q.enqueue('c')
+q.drain  # => ['a', 'b', 'c'] (queue is now empty)
+
+s = Philiprehberger::QueueStack::Stack.new
+s.push('a')
+s.push('b')
+s.push('c')
+s.drain  # => ['c', 'b', 'a'] (stack is now empty)
+```
+
+### Iteration
+
+```ruby
+q = Philiprehberger::QueueStack::Queue.new
+q.enqueue('a')
+q.enqueue('b')
+q.each { |item| puts item }  # prints 'a', 'b'
+q.to_a                        # => ['a', 'b'] (queue unchanged)
+```
+
+### Close / Shutdown
+
+```ruby
+q = Philiprehberger::QueueStack::Queue.new
+q.enqueue('a')
+q.close
+q.closed?     # => true
+q.dequeue     # => 'a'
+q.dequeue     # => nil (closed and empty)
+q.enqueue('b') # raises Philiprehberger::QueueStack::ClosedError
+```
+
 ### Capacity Limits
 
 ```ruby
@@ -87,6 +125,11 @@ q.full?   # => true
 | `#dequeue` | Remove and return front item (blocks if empty) |
 | `#try_dequeue(timeout:)` | Dequeue with timeout, returns nil on timeout |
 | `#peek` | View front item without removing |
+| `#drain` | Remove and return all items as array (FIFO order) |
+| `#each` | Iterate items without removing (returns Enumerator if no block) |
+| `#to_a` | Snapshot as array (FIFO order) |
+| `#close` | Mark as closed (new enqueues raise `ClosedError`) |
+| `#closed?` | Whether the queue has been closed |
 | `#size` | Number of items |
 | `#empty?` | Whether the queue is empty |
 | `#full?` | Whether the queue is at capacity |
@@ -100,6 +143,11 @@ q.full?   # => true
 | `#pop` | Remove and return top item (blocks if empty) |
 | `#try_pop(timeout:)` | Pop with timeout, returns nil on timeout |
 | `#peek` | View top item without removing |
+| `#drain` | Remove and return all items as array (LIFO order) |
+| `#each` | Iterate items without removing (returns Enumerator if no block) |
+| `#to_a` | Snapshot as array (LIFO order) |
+| `#close` | Mark as closed (new pushes raise `ClosedError`) |
+| `#closed?` | Whether the stack has been closed |
 | `#size` | Number of items |
 | `#empty?` | Whether the stack is empty |
 | `#full?` | Whether the stack is at capacity |
