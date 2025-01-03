@@ -54,6 +54,48 @@ module Philiprehberger
         end
       end
 
+      # Try to push an item without blocking indefinitely.
+      #
+      # With timeout: nil, returns immediately. With a numeric timeout, waits up to
+      # that many seconds for space to become available.
+      #
+      # @param item [Object] the item to push
+      # @param timeout [Numeric, nil] seconds to wait, or nil for non-blocking
+      # @return [Boolean] true if pushed, false if full (or timed out)
+      # @raise [ClosedError] if the stack has been closed
+      def try_push(item, timeout: nil)
+        @mutex.synchronize do
+          raise ClosedError, 'cannot push on a closed stack' if @closed
+
+          if @capacity && @items.length >= @capacity
+            return false if timeout.nil? || timeout <= 0
+
+            deadline = Time.now + timeout
+            while @items.length >= @capacity
+              remaining = deadline - Time.now
+              return false if remaining <= 0
+
+              @not_full.wait(@mutex, remaining)
+              raise ClosedError, 'cannot push on a closed stack' if @closed
+            end
+          end
+
+          @items.push(item)
+          @not_empty.signal
+          true
+        end
+      end
+
+      # Remove all items without returning them. Signals any blocked producers.
+      #
+      # @return [void]
+      def clear
+        @mutex.synchronize do
+          @items.clear
+          @not_full.broadcast
+        end
+      end
+
       # Try to pop an item with a timeout.
       #
       # @param timeout [Numeric] seconds to wait
