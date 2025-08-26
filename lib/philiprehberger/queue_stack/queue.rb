@@ -175,6 +175,18 @@ module Philiprehberger
         @mutex.synchronize { @items.first }
       end
 
+      # Peek at the item at the given position without removing it.
+      #
+      # Indexing follows +Array#[]+ semantics: +0+ is the front of the queue,
+      # +size - 1+ is the back, and negative indices count from the back
+      # (+-1+ is the last item). Returns +nil+ when the index is out of range.
+      #
+      # @param index [Integer] position in the queue (supports negative indices)
+      # @return [Object, nil] the item at the position or nil if out of range
+      def peek_at(index)
+        @mutex.synchronize { @items[index] }
+      end
+
       # Return the number of items in the queue.
       #
       # @return [Integer]

@@ -40,9 +40,13 @@ item = q.dequeue  # => 'task'
 q = Philiprehberger::QueueStack::Queue.new(capacity: 10)
 q.enqueue('first')
 q.enqueue('second')
-q.dequeue   # => 'first'
-q.peek      # => 'second'
-q.size      # => 1
+q.enqueue('third')
+q.peek         # => 'first'
+q.peek_at(1)   # => 'second'
+q.peek_at(-1)  # => 'third'
+q.peek_at(99)  # => nil (out of range)
+q.dequeue      # => 'first'
+q.size         # => 2
 ```
 
 ### Stack (LIFO)
@@ -149,6 +153,7 @@ q.full?   # => true
 | `#try_dequeue(timeout:)` | Dequeue with timeout, returns nil on timeout |
 | `#clear` | Remove all items without returning them |
 | `#peek` | View front item without removing |
+| `#peek_at(index)` | View item at the given position (supports negative indices, returns nil if out of range) |
 | `#drain` | Remove and return all items as array (FIFO order) |
 | `#each` | Iterate items without removing (returns Enumerator if no block) |
 | `#to_a` | Snapshot as array (FIFO order) |
