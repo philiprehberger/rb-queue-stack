@@ -14,3 +14,6 @@ Layout:
   Enabled: false
 Bundler/OrderedGems:
   Enabled: false
+
+Layout/EndOfLine:
+  Enabled: false

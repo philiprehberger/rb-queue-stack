@@ -121,6 +121,65 @@ RSpec.describe Philiprehberger::QueueStack::Queue do
       expect(results.length).to eq(30)
     end
   end
+
+  describe 'FIFO ordering with many items' do
+    it 'preserves insertion order for 20 items' do
+      q = described_class.new
+      (1..20).each { |i| q.enqueue(i) }
+      results = 20.times.map { q.dequeue }
+      expect(results).to eq((1..20).to_a)
+    end
+  end
+
+  describe '#peek without removing' do
+    it 'does not change size after multiple peeks' do
+      q = described_class.new
+      q.enqueue('x')
+      q.enqueue('y')
+      5.times { q.peek }
+      expect(q.size).to eq(2)
+      expect(q.peek).to eq('x')
+    end
+  end
+
+  describe 'empty queue operations' do
+    it 'peek returns nil on empty queue' do
+      q = described_class.new
+      expect(q.peek).to be_nil
+    end
+
+    it 'try_dequeue returns nil on empty queue' do
+      q = described_class.new
+      expect(q.try_dequeue(timeout: 0.01)).to be_nil
+    end
+
+    it 'size is zero on empty queue' do
+      q = described_class.new
+      expect(q.size).to eq(0)
+    end
+
+    it 'empty? is true on new queue' do
+      q = described_class.new
+      expect(q.empty?).to be true
+    end
+
+    it 'full? is false on empty queue with capacity' do
+      q = described_class.new(capacity: 5)
+      expect(q.full?).to be false
+    end
+  end
+
+  describe 'size tracking' do
+    it 'tracks size through enqueue and dequeue cycles' do
+      q = described_class.new
+      5.times { |i| q.enqueue(i) }
+      expect(q.size).to eq(5)
+      3.times { q.dequeue }
+      expect(q.size).to eq(2)
+      2.times { |i| q.enqueue(i) }
+      expect(q.size).to eq(4)
+    end
+  end
 end
 
 RSpec.describe Philiprehberger::QueueStack::Stack do
@@ -232,6 +291,53 @@ RSpec.describe Philiprehberger::QueueStack::Stack do
       consumers.each(&:join)
 
       expect(results.length).to eq(30)
+    end
+  end
+
+  describe 'LIFO ordering with many items' do
+    it 'returns items in reverse insertion order' do
+      s = described_class.new
+      (1..10).each { |i| s.push(i) }
+      results = 10.times.map { s.pop }
+      expect(results).to eq((1..10).to_a.reverse)
+    end
+  end
+
+  describe '#peek without removing' do
+    it 'does not change size after multiple peeks' do
+      s = described_class.new
+      s.push('x')
+      s.push('y')
+      5.times { s.peek }
+      expect(s.size).to eq(2)
+      expect(s.peek).to eq('y')
+    end
+  end
+
+  describe 'empty stack operations' do
+    it 'peek returns nil on empty stack' do
+      s = described_class.new
+      expect(s.peek).to be_nil
+    end
+
+    it 'try_pop returns nil on empty stack' do
+      s = described_class.new
+      expect(s.try_pop(timeout: 0.01)).to be_nil
+    end
+
+    it 'size is zero on empty stack' do
+      s = described_class.new
+      expect(s.size).to eq(0)
+    end
+
+    it 'empty? is true on new stack' do
+      s = described_class.new
+      expect(s.empty?).to be true
+    end
+
+    it 'full? is false on empty stack with capacity' do
+      s = described_class.new(capacity: 5)
+      expect(s.full?).to be false
     end
   end
 end
