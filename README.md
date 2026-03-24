@@ -15,7 +15,7 @@ Thread-safe Queue and Stack with capacity limits and blocking operations
 Add to your Gemfile:
 
 ```ruby
-gem 'philiprehberger-queue_stack'
+gem "philiprehberger-queue_stack"
 ```
 
 Or install directly:
@@ -108,8 +108,8 @@ q.full?   # => true
 
 ```bash
 bundle install
-bundle exec rspec      # Run tests
-bundle exec rubocop    # Check code style
+bundle exec rspec
+bundle exec rubocop
 ```
 
 ## License
