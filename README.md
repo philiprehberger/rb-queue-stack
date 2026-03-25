@@ -27,7 +27,7 @@ gem install philiprehberger-queue_stack
 ## Usage
 
 ```ruby
-require 'philiprehberger/queue_stack'
+require "philiprehberger/queue_stack"
 
 q = Philiprehberger::QueueStack::Queue.new(capacity: 100)
 q.enqueue('task')
