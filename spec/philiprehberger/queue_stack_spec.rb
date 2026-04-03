@@ -8,6 +8,12 @@ RSpec.describe Philiprehberger::QueueStack do
       expect(Philiprehberger::QueueStack::VERSION).not_to be_nil
     end
   end
+
+  describe 'ClosedError' do
+    it 'is a subclass of Error' do
+      expect(Philiprehberger::QueueStack::ClosedError).to be < Philiprehberger::QueueStack::Error
+    end
+  end
 end
 
 RSpec.describe Philiprehberger::QueueStack::Queue do
@@ -91,6 +97,133 @@ RSpec.describe Philiprehberger::QueueStack::Queue do
     it 'returns nil on timeout' do
       q = described_class.new
       expect(q.try_dequeue(timeout: 0.05)).to be_nil
+    end
+  end
+
+  describe '#drain' do
+    it 'returns all items in FIFO order' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.enqueue('c')
+      expect(q.drain).to eq(%w[a b c])
+    end
+
+    it 'leaves the queue empty' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.drain
+      expect(q.empty?).to be true
+      expect(q.size).to eq(0)
+    end
+
+    it 'returns empty array on empty queue' do
+      q = described_class.new
+      expect(q.drain).to eq([])
+    end
+  end
+
+  describe '#each' do
+    it 'iterates items in FIFO order without removing them' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.enqueue('c')
+      collected = q.map { |item| item }
+      expect(collected).to eq(%w[a b c])
+      expect(q.size).to eq(3)
+    end
+
+    it 'returns an Enumerator when no block is given' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      enum = q.each
+      expect(enum).to be_a(Enumerator)
+      expect(enum.to_a).to eq(%w[a b])
+    end
+  end
+
+  describe '#to_a' do
+    it 'returns a snapshot in FIFO order' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.enqueue('c')
+      expect(q.to_a).to eq(%w[a b c])
+    end
+
+    it 'does not modify the queue' do
+      q = described_class.new
+      q.enqueue('x')
+      q.to_a
+      expect(q.size).to eq(1)
+    end
+  end
+
+  describe '#close and #closed?' do
+    it 'starts as not closed' do
+      q = described_class.new
+      expect(q.closed?).to be false
+    end
+
+    it 'marks queue as closed' do
+      q = described_class.new
+      q.close
+      expect(q.closed?).to be true
+    end
+
+    it 'raises ClosedError on enqueue after close' do
+      q = described_class.new
+      q.close
+      expect { q.enqueue('x') }.to raise_error(Philiprehberger::QueueStack::ClosedError)
+    end
+
+    it 'allows dequeuing remaining items after close' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.close
+      expect(q.dequeue).to eq('a')
+      expect(q.dequeue).to eq('b')
+    end
+
+    it 'returns nil from dequeue when closed and empty' do
+      q = described_class.new
+      q.close
+      expect(q.dequeue).to be_nil
+    end
+
+    it 'returns nil from try_dequeue when closed and empty' do
+      q = described_class.new
+      q.close
+      expect(q.try_dequeue(timeout: 0.1)).to be_nil
+    end
+
+    it 'allows drain after close' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.close
+      expect(q.drain).to eq(%w[a b])
+      expect(q.empty?).to be true
+    end
+
+    it 'drain on closed empty queue returns empty array' do
+      q = described_class.new
+      q.close
+      expect(q.drain).to eq([])
+    end
+
+    it 'wakes waiting threads on close' do
+      q = described_class.new
+      result = nil
+      thread = Thread.new { result = q.dequeue }
+      sleep 0.05
+      q.close
+      thread.join(1)
+      expect(result).to be_nil
     end
   end
 
@@ -263,6 +396,133 @@ RSpec.describe Philiprehberger::QueueStack::Stack do
     it 'returns nil on timeout' do
       s = described_class.new
       expect(s.try_pop(timeout: 0.05)).to be_nil
+    end
+  end
+
+  describe '#drain' do
+    it 'returns all items in LIFO order (top first)' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      s.push('c')
+      expect(s.drain).to eq(%w[c b a])
+    end
+
+    it 'leaves the stack empty' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      s.drain
+      expect(s.empty?).to be true
+      expect(s.size).to eq(0)
+    end
+
+    it 'returns empty array on empty stack' do
+      s = described_class.new
+      expect(s.drain).to eq([])
+    end
+  end
+
+  describe '#each' do
+    it 'iterates items in LIFO order without removing them' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      s.push('c')
+      collected = s.map { |item| item }
+      expect(collected).to eq(%w[c b a])
+      expect(s.size).to eq(3)
+    end
+
+    it 'returns an Enumerator when no block is given' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      enum = s.each
+      expect(enum).to be_a(Enumerator)
+      expect(enum.to_a).to eq(%w[b a])
+    end
+  end
+
+  describe '#to_a' do
+    it 'returns a snapshot in LIFO order (top first)' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      s.push('c')
+      expect(s.to_a).to eq(%w[c b a])
+    end
+
+    it 'does not modify the stack' do
+      s = described_class.new
+      s.push('x')
+      s.to_a
+      expect(s.size).to eq(1)
+    end
+  end
+
+  describe '#close and #closed?' do
+    it 'starts as not closed' do
+      s = described_class.new
+      expect(s.closed?).to be false
+    end
+
+    it 'marks stack as closed' do
+      s = described_class.new
+      s.close
+      expect(s.closed?).to be true
+    end
+
+    it 'raises ClosedError on push after close' do
+      s = described_class.new
+      s.close
+      expect { s.push('x') }.to raise_error(Philiprehberger::QueueStack::ClosedError)
+    end
+
+    it 'allows popping remaining items after close' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      s.close
+      expect(s.pop).to eq('b')
+      expect(s.pop).to eq('a')
+    end
+
+    it 'returns nil from pop when closed and empty' do
+      s = described_class.new
+      s.close
+      expect(s.pop).to be_nil
+    end
+
+    it 'returns nil from try_pop when closed and empty' do
+      s = described_class.new
+      s.close
+      expect(s.try_pop(timeout: 0.1)).to be_nil
+    end
+
+    it 'allows drain after close' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      s.close
+      expect(s.drain).to eq(%w[b a])
+      expect(s.empty?).to be true
+    end
+
+    it 'drain on closed empty stack returns empty array' do
+      s = described_class.new
+      s.close
+      expect(s.drain).to eq([])
+    end
+
+    it 'wakes waiting threads on close' do
+      s = described_class.new
+      result = nil
+      thread = Thread.new { result = s.pop }
+      sleep 0.05
+      s.close
+      thread.join(1)
+      expect(result).to be_nil
     end
   end
 

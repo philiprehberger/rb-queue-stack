@@ -9,12 +9,15 @@ module Philiprehberger
     #   q.enqueue('item')
     #   q.dequeue  # => 'item'
     class Queue
+      include Enumerable
+
       # Create a new queue.
       #
       # @param capacity [Integer, nil] maximum number of items (nil for unlimited)
       def initialize(capacity: nil)
         @items = []
         @capacity = capacity
+        @closed = false
         @mutex = Mutex.new
         @not_empty = ConditionVariable.new
         @not_full = ConditionVariable.new
@@ -24,20 +27,27 @@ module Philiprehberger
       #
       # @param item [Object] the item to enqueue
       # @return [void]
+      # @raise [ClosedError] if the queue has been closed
       def enqueue(item)
         @mutex.synchronize do
+          raise ClosedError, 'cannot enqueue on a closed queue' if @closed
+
           @not_full.wait(@mutex) while @capacity && @items.length >= @capacity
           @items.push(item)
           @not_empty.signal
         end
       end
 
-      # Remove and return the front item. Blocks if empty.
+      # Remove and return the front item. Blocks if empty (returns nil if closed and empty).
       #
-      # @return [Object] the dequeued item
+      # @return [Object, nil] the dequeued item or nil if closed and empty
       def dequeue
         @mutex.synchronize do
-          @not_empty.wait(@mutex) while @items.empty?
+          while @items.empty?
+            return nil if @closed
+
+            @not_empty.wait(@mutex)
+          end
           item = @items.shift
           @not_full.signal
           item
@@ -52,6 +62,8 @@ module Philiprehberger
         deadline = Time.now + timeout
         @mutex.synchronize do
           while @items.empty?
+            return nil if @closed
+
             remaining = deadline - Time.now
             return nil if remaining <= 0
 
@@ -61,6 +73,57 @@ module Philiprehberger
           @not_full.signal
           item
         end
+      end
+
+      # Remove and return all items as an array (FIFO order). Non-blocking.
+      #
+      # @return [Array] all items in FIFO order
+      def drain
+        @mutex.synchronize do
+          result = @items.dup
+          @items.clear
+          @not_full.broadcast
+          result
+        end
+      end
+
+      # Iterate items without removing them (snapshot of current state, FIFO order).
+      # Returns an Enumerator if no block is given.
+      #
+      # @yield [item] each item in FIFO order
+      # @return [Enumerator, self]
+      def each(&block)
+        snapshot = @mutex.synchronize { @items.dup }
+        return snapshot.each unless block
+
+        snapshot.each(&block)
+        self
+      end
+
+      # Return a snapshot of items as an array (FIFO order).
+      #
+      # @return [Array]
+      def to_a
+        @mutex.synchronize { @items.dup }
+      end
+
+      # Mark the queue as closed. New enqueue calls will raise ClosedError.
+      # Existing items can still be dequeued. Wakes all waiting threads.
+      #
+      # @return [void]
+      def close
+        @mutex.synchronize do
+          @closed = true
+          @not_empty.broadcast
+          @not_full.broadcast
+        end
+      end
+
+      # Whether the queue has been closed.
+      #
+      # @return [Boolean]
+      def closed?
+        @mutex.synchronize { @closed }
       end
 
       # Peek at the front item without removing it.
