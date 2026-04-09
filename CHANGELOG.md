@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-09
+
+### Added
+- `Queue#try_enqueue(item, timeout: nil)` and `Stack#try_push(item, timeout: nil)` non-blocking insertion variants
+- `Queue#clear` and `Stack#clear` to discard all items and wake blocked producers
+
 ## [0.2.0] - 2026-04-03
 
 ### Added

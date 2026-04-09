@@ -92,6 +92,28 @@ q.each { |item| puts item }  # prints 'a', 'b'
 q.to_a                        # => ['a', 'b'] (queue unchanged)
 ```
 
+### Non-Blocking Insertion
+
+```ruby
+q = Philiprehberger::QueueStack::Queue.new(capacity: 1)
+q.enqueue('a')
+q.try_enqueue('b')                 # => false (full, no wait)
+q.try_enqueue('b', timeout: 0.5)   # => false after waiting up to 0.5s
+
+s = Philiprehberger::QueueStack::Stack.new(capacity: 1)
+s.push('a')
+s.try_push('b')                    # => false (full, no wait)
+```
+
+### Clear
+
+```ruby
+q = Philiprehberger::QueueStack::Queue.new
+q.enqueue('a'); q.enqueue('b')
+q.clear
+q.empty?  # => true
+```
+
 ### Close / Shutdown
 
 ```ruby
@@ -122,8 +144,10 @@ q.full?   # => true
 |--------|-------------|
 | `.new(capacity:)` | Create a queue with optional capacity limit |
 | `#enqueue(item)` | Add item to back (blocks if full) |
+| `#try_enqueue(item, timeout: nil)` | Non-blocking enqueue, returns true/false (waits up to timeout if given) |
 | `#dequeue` | Remove and return front item (blocks if empty) |
 | `#try_dequeue(timeout:)` | Dequeue with timeout, returns nil on timeout |
+| `#clear` | Remove all items without returning them |
 | `#peek` | View front item without removing |
 | `#drain` | Remove and return all items as array (FIFO order) |
 | `#each` | Iterate items without removing (returns Enumerator if no block) |
@@ -140,8 +164,10 @@ q.full?   # => true
 |--------|-------------|
 | `.new(capacity:)` | Create a stack with optional capacity limit |
 | `#push(item)` | Push item on top (blocks if full) |
+| `#try_push(item, timeout: nil)` | Non-blocking push, returns true/false (waits up to timeout if given) |
 | `#pop` | Remove and return top item (blocks if empty) |
 | `#try_pop(timeout:)` | Pop with timeout, returns nil on timeout |
+| `#clear` | Remove all items without returning them |
 | `#peek` | View top item without removing |
 | `#drain` | Remove and return all items as array (LIFO order) |
 | `#each` | Iterate items without removing (returns Enumerator if no block) |

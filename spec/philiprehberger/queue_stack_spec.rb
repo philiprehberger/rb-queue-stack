@@ -600,4 +600,109 @@ RSpec.describe Philiprehberger::QueueStack::Stack do
       expect(s.full?).to be false
     end
   end
+
+  describe Philiprehberger::QueueStack::Queue, '#try_enqueue and #clear' do
+    it 'returns true when there is room' do
+      q = described_class.new(capacity: 2)
+      expect(q.try_enqueue('a')).to be true
+      expect(q.size).to eq(1)
+    end
+
+    it 'returns false immediately when full and no timeout' do
+      q = described_class.new(capacity: 1)
+      q.enqueue('a')
+      expect(q.try_enqueue('b')).to be false
+      expect(q.size).to eq(1)
+    end
+
+    it 'returns false after waiting up to timeout when full' do
+      q = described_class.new(capacity: 1)
+      q.enqueue('a')
+      start = Time.now
+      expect(q.try_enqueue('b', timeout: 0.05)).to be false
+      expect(Time.now - start).to be >= 0.04
+    end
+
+    it 'succeeds within timeout when space frees up' do
+      q = described_class.new(capacity: 1)
+      q.enqueue('a')
+      Thread.new do
+  sleep 0.02
+  q.dequeue
+end
+      expect(q.try_enqueue('b', timeout: 1)).to be true
+    end
+
+    it 'raises ClosedError when closed' do
+      q = described_class.new
+      q.close
+      expect { q.try_enqueue('a') }.to raise_error(Philiprehberger::QueueStack::ClosedError)
+    end
+
+    it 'unblocks producers via clear' do
+      q = described_class.new(capacity: 1)
+      q.enqueue('a')
+      Thread.new do
+  sleep 0.02
+  q.clear
+end
+      expect(q.try_enqueue('b', timeout: 1)).to be true
+      expect(q.size).to eq(1)
+    end
+
+    it 'clear empties the queue' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.clear
+      expect(q.empty?).to be true
+    end
+  end
+
+  describe Philiprehberger::QueueStack::Stack, '#try_push and #clear' do
+    it 'returns true when there is room' do
+      s = described_class.new(capacity: 2)
+      expect(s.try_push('a')).to be true
+      expect(s.size).to eq(1)
+    end
+
+    it 'returns false immediately when full and no timeout' do
+      s = described_class.new(capacity: 1)
+      s.push('a')
+      expect(s.try_push('b')).to be false
+      expect(s.size).to eq(1)
+    end
+
+    it 'returns false after waiting up to timeout when full' do
+      s = described_class.new(capacity: 1)
+      s.push('a')
+      start = Time.now
+      expect(s.try_push('b', timeout: 0.05)).to be false
+      expect(Time.now - start).to be >= 0.04
+    end
+
+    it 'succeeds within timeout when space frees up' do
+      s = described_class.new(capacity: 1)
+      s.push('a')
+      Thread.new do
+  sleep 0.02
+  s.pop
+end
+      expect(s.try_push('b', timeout: 1)).to be true
+    end
+
+    it 'raises ClosedError when closed' do
+      s = described_class.new
+      s.close
+      expect { s.try_push('a') }.to raise_error(Philiprehberger::QueueStack::ClosedError)
+    end
+
+    it 'clear empties the stack' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      s.clear
+      expect(s.empty?).to be true
+    end
+  end
 end
