@@ -44,6 +44,66 @@ RSpec.describe Philiprehberger::QueueStack::Queue do
     end
   end
 
+  describe '#peek_at' do
+    it 'returns the same item as #peek for index 0' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.enqueue('c')
+      expect(q.peek_at(0)).to eq(q.peek)
+      expect(q.peek_at(0)).to eq('a')
+    end
+
+    it 'returns the second item in enqueue order for index 1' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.enqueue('c')
+      expect(q.peek_at(1)).to eq('b')
+    end
+
+    it 'returns the last item for index -1' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.enqueue('c')
+      expect(q.peek_at(-1)).to eq('c')
+    end
+
+    it 'returns nil when the index is out of range (positive)' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      expect(q.peek_at(5)).to be_nil
+    end
+
+    it 'returns nil when the negative index is beyond -size' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      expect(q.peek_at(-3)).to be_nil
+    end
+
+    it 'returns nil on an empty queue' do
+      q = described_class.new
+      expect(q.peek_at(0)).to be_nil
+      expect(q.peek_at(-1)).to be_nil
+    end
+
+    it 'does not mutate the queue' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      q.enqueue('c')
+      q.peek_at(0)
+      q.peek_at(1)
+      q.peek_at(-1)
+      q.peek_at(99)
+      expect(q.size).to eq(3)
+      expect(q.to_a).to eq(%w[a b c])
+    end
+  end
+
   describe '#size' do
     it 'tracks the number of items' do
       q = described_class.new
