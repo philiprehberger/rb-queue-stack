@@ -96,6 +96,24 @@ module Philiprehberger
         end
       end
 
+      # Conditionally dequeue the front item. The block is called with the item
+      # that would be dequeued next. If the block returns truthy, the item is
+      # removed and returned. Otherwise the item is left in place and +nil+ is
+      # returned. Returns +nil+ immediately if the queue is empty (non-blocking).
+      #
+      # @yield [item] the front item
+      # @return [Object, nil] the removed item, or nil if empty or block returned false
+      def dequeue_if
+        @mutex.synchronize do
+          return nil if @items.empty?
+          return nil unless yield(@items.first)
+
+          item = @items.shift
+          @not_full.signal
+          item
+        end
+      end
+
       # Try to dequeue an item with a timeout.
       #
       # @param timeout [Numeric] seconds to wait

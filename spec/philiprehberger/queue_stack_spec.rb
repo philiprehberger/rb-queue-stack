@@ -160,6 +160,87 @@ RSpec.describe Philiprehberger::QueueStack::Queue do
     end
   end
 
+  describe '#dequeue_if' do
+    it 'removes and returns the front item when the block is truthy' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      result = q.dequeue_if { |item| item == 'a' }
+      expect(result).to eq('a')
+      expect(q.size).to eq(1)
+      expect(q.peek).to eq('b')
+    end
+
+    it 'leaves the item in place and returns nil when the block is falsy' do
+      q = described_class.new
+      q.enqueue('a')
+      q.enqueue('b')
+      result = q.dequeue_if { |_item| false }
+      expect(result).to be_nil
+      expect(q.size).to eq(2)
+      expect(q.peek).to eq('a')
+    end
+
+    it 'returns nil immediately on an empty queue without calling the block' do
+      q = described_class.new
+      called = false
+      start = Time.now
+      result = q.dequeue_if do |_item|
+        called = true
+        true
+      end
+      expect(result).to be_nil
+      expect(called).to be(false)
+      expect(Time.now - start).to be < 0.05
+    end
+
+    it 'yields the item that would be dequeued (front of the queue)' do
+      q = described_class.new
+      q.enqueue('first')
+      q.enqueue('second')
+      yielded = nil
+      q.dequeue_if do |item|
+        yielded = item
+        false
+      end
+      expect(yielded).to eq('first')
+    end
+
+    it 'returns nil on a closed empty queue' do
+      q = described_class.new
+      q.close
+      expect(q.dequeue_if { |_| true }).to be_nil
+    end
+
+    it 'still dequeues remaining items on a closed queue when the block is truthy' do
+      q = described_class.new
+      q.enqueue('a')
+      q.close
+      expect(q.dequeue_if { |_| true }).to eq('a')
+      expect(q.size).to eq(0)
+    end
+
+    it 'is thread-safe: only one of many competing callers removes a given item' do
+      q = described_class.new
+      q.enqueue('shared')
+
+      winners = []
+      mutex = Mutex.new
+
+      threads = 10.times.map do
+        Thread.new do
+          result = q.dequeue_if { |_| true }
+          mutex.synchronize { winners << result } if result
+        end
+      end
+
+      threads.each(&:join)
+
+      expect(winners.compact.length).to eq(1)
+      expect(q.size).to eq(0)
+    end
+  end
+
   describe '#drain' do
     it 'returns all items in FIFO order' do
       q = described_class.new
@@ -456,6 +537,87 @@ RSpec.describe Philiprehberger::QueueStack::Stack do
     it 'returns nil on timeout' do
       s = described_class.new
       expect(s.try_pop(timeout: 0.05)).to be_nil
+    end
+  end
+
+  describe '#pop_if' do
+    it 'removes and returns the top item when the block is truthy' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      result = s.pop_if { |item| item == 'b' }
+      expect(result).to eq('b')
+      expect(s.size).to eq(1)
+      expect(s.peek).to eq('a')
+    end
+
+    it 'leaves the item in place and returns nil when the block is falsy' do
+      s = described_class.new
+      s.push('a')
+      s.push('b')
+      result = s.pop_if { |_item| false }
+      expect(result).to be_nil
+      expect(s.size).to eq(2)
+      expect(s.peek).to eq('b')
+    end
+
+    it 'returns nil immediately on an empty stack without calling the block' do
+      s = described_class.new
+      called = false
+      start = Time.now
+      result = s.pop_if do |_item|
+        called = true
+        true
+      end
+      expect(result).to be_nil
+      expect(called).to be(false)
+      expect(Time.now - start).to be < 0.05
+    end
+
+    it 'yields the item that would be popped (top of the stack)' do
+      s = described_class.new
+      s.push('bottom')
+      s.push('top')
+      yielded = nil
+      s.pop_if do |item|
+        yielded = item
+        false
+      end
+      expect(yielded).to eq('top')
+    end
+
+    it 'returns nil on a closed empty stack' do
+      s = described_class.new
+      s.close
+      expect(s.pop_if { |_| true }).to be_nil
+    end
+
+    it 'still pops remaining items on a closed stack when the block is truthy' do
+      s = described_class.new
+      s.push('a')
+      s.close
+      expect(s.pop_if { |_| true }).to eq('a')
+      expect(s.size).to eq(0)
+    end
+
+    it 'is thread-safe: only one of many competing callers removes a given item' do
+      s = described_class.new
+      s.push('shared')
+
+      winners = []
+      mutex = Mutex.new
+
+      threads = 10.times.map do
+        Thread.new do
+          result = s.pop_if { |_| true }
+          mutex.synchronize { winners << result } if result
+        end
+      end
+
+      threads.each(&:join)
+
+      expect(winners.compact.length).to eq(1)
+      expect(s.size).to eq(0)
     end
   end
 
