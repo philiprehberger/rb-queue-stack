@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-16
+
+### Added
+- `Queue#dequeue_if { |item| ... }` conditionally removes and returns the front item only when the block returns truthy; returns `nil` when empty or the block returns false (non-blocking)
+- `Stack#pop_if { |item| ... }` conditionally removes and returns the top item only when the block returns truthy; returns `nil` when empty or the block returns false (non-blocking)
+
 ## [0.4.0] - 2026-04-15
 
 ### Added

@@ -96,6 +96,24 @@ module Philiprehberger
         end
       end
 
+      # Conditionally pop the top item. The block is called with the item that
+      # would be popped next. If the block returns truthy, the item is removed
+      # and returned. Otherwise the item is left in place and +nil+ is returned.
+      # Returns +nil+ immediately if the stack is empty (non-blocking).
+      #
+      # @yield [item] the top item
+      # @return [Object, nil] the removed item, or nil if empty or block returned false
+      def pop_if
+        @mutex.synchronize do
+          return nil if @items.empty?
+          return nil unless yield(@items.last)
+
+          item = @items.pop
+          @not_full.signal
+          item
+        end
+      end
+
       # Try to pop an item with a timeout.
       #
       # @param timeout [Numeric] seconds to wait

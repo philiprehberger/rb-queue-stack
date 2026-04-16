@@ -70,6 +70,25 @@ s = Philiprehberger::QueueStack::Stack.new
 item = s.try_pop(timeout: 5)  # waits up to 5 seconds
 ```
 
+### Conditional Removal
+
+Remove the front/top item only when a predicate holds. Non-blocking; returns `nil` if the collection is empty or the block returns false (the item stays put).
+
+```ruby
+q = Philiprehberger::QueueStack::Queue.new
+q.enqueue({ priority: 10 })
+q.enqueue({ priority: 2 })
+
+# Only take high-priority work
+q.dequeue_if { |job| job[:priority] >= 5 }  # => { priority: 10 }
+q.dequeue_if { |job| job[:priority] >= 5 }  # => nil (head priority 2 left intact)
+
+s = Philiprehberger::QueueStack::Stack.new
+s.push(:ready)
+s.pop_if { |item| item == :ready }   # => :ready
+s.pop_if { |item| item == :ready }   # => nil (empty)
+```
+
 ### Drain
 
 ```ruby
@@ -150,6 +169,7 @@ q.full?   # => true
 | `#enqueue(item)` | Add item to back (blocks if full) |
 | `#try_enqueue(item, timeout: nil)` | Non-blocking enqueue, returns true/false (waits up to timeout if given) |
 | `#dequeue` | Remove and return front item (blocks if empty) |
+| `#dequeue_if { \|item\| ... }` | Remove and return the front item only if the block is truthy (non-blocking) |
 | `#try_dequeue(timeout:)` | Dequeue with timeout, returns nil on timeout |
 | `#clear` | Remove all items without returning them |
 | `#peek` | View front item without removing |
@@ -171,6 +191,7 @@ q.full?   # => true
 | `#push(item)` | Push item on top (blocks if full) |
 | `#try_push(item, timeout: nil)` | Non-blocking push, returns true/false (waits up to timeout if given) |
 | `#pop` | Remove and return top item (blocks if empty) |
+| `#pop_if { \|item\| ... }` | Remove and return the top item only if the block is truthy (non-blocking) |
 | `#try_pop(timeout:)` | Pop with timeout, returns nil on timeout |
 | `#clear` | Remove all items without returning them |
 | `#peek` | View top item without removing |
