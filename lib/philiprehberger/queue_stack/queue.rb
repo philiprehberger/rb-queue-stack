@@ -225,6 +225,27 @@ module Philiprehberger
       def full?
         @mutex.synchronize { @capacity ? @items.length >= @capacity : false }
       end
+
+      # The configured capacity, or +nil+ for an unlimited queue.
+      #
+      # @return [Integer, nil]
+      def capacity
+        @mutex.synchronize { @capacity }
+      end
+
+      # Number of additional items the queue can accept before it is full.
+      #
+      # Returns +nil+ for unlimited queues. For bounded queues returns
+      # +capacity - size+, clamped to a minimum of 0.
+      #
+      # @return [Integer, nil]
+      def remaining_capacity
+        @mutex.synchronize do
+          next nil unless @capacity
+
+          [@capacity - @items.length, 0].max
+        end
+      end
     end
   end
 end

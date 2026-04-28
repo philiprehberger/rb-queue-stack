@@ -159,6 +159,22 @@ q.full?   # => true
 # enqueue blocks until space is available
 ```
 
+### Capacity
+
+Read the configured capacity and the number of additional items that can be
+accepted. Both return `nil` for unbounded containers; `remaining_capacity`
+returns `0` when full. Useful for sizing batches or backpressure decisions.
+
+```ruby
+q = Philiprehberger::QueueStack::Queue.new(capacity: 100)
+q.capacity            # => 100
+q.remaining_capacity  # => 100
+50.times { |i| q.enqueue(i) }
+q.remaining_capacity  # => 50
+
+batch_size = [items.length, q.remaining_capacity].min
+```
+
 ## API
 
 ### `Queue`
@@ -182,6 +198,8 @@ q.full?   # => true
 | `#size` | Number of items |
 | `#empty?` | Whether the queue is empty |
 | `#full?` | Whether the queue is at capacity |
+| `#capacity` | Configured capacity, or `nil` for an unlimited queue |
+| `#remaining_capacity` | Items the queue can still accept (`nil` for unlimited, `0` when full) |
 
 ### `Stack`
 
@@ -203,6 +221,8 @@ q.full?   # => true
 | `#size` | Number of items |
 | `#empty?` | Whether the stack is empty |
 | `#full?` | Whether the stack is at capacity |
+| `#capacity` | Configured capacity, or `nil` for an unlimited stack |
+| `#remaining_capacity` | Items the stack can still accept (`nil` for unlimited, `0` when full) |
 
 ## Development
 

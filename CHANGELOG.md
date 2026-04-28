@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-27
+
+### Added
+- `Queue#capacity`, `Queue#remaining_capacity`, `Stack#capacity`, `Stack#remaining_capacity` — capacity introspection. `capacity` returns the configured limit (or `nil` for unlimited); `remaining_capacity` returns the number of additional items that can still be accepted (or `nil` for unlimited, `0` when full). Mutex-synchronized for consistent reads.
+
 ## [0.5.0] - 2026-04-16
 
 ### Added

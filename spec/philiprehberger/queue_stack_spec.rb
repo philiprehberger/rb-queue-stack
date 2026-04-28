@@ -454,6 +454,38 @@ RSpec.describe Philiprehberger::QueueStack::Queue do
       expect(q.size).to eq(4)
     end
   end
+
+  describe '#capacity and #remaining_capacity' do
+    it 'returns nil for an unlimited queue' do
+      q = described_class.new
+      expect(q.capacity).to be_nil
+      expect(q.remaining_capacity).to be_nil
+    end
+
+    it 'returns the configured capacity for a bounded queue' do
+      q = described_class.new(capacity: 5)
+      expect(q.capacity).to eq(5)
+    end
+
+    it 'tracks remaining_capacity after enqueue and dequeue' do
+      q = described_class.new(capacity: 3)
+      expect(q.remaining_capacity).to eq(3)
+      q.enqueue('a')
+      expect(q.remaining_capacity).to eq(2)
+      q.enqueue('b')
+      q.enqueue('c')
+      expect(q.remaining_capacity).to eq(0)
+      q.dequeue
+      expect(q.remaining_capacity).to eq(1)
+    end
+
+    it 'returns 0 for remaining_capacity when at capacity' do
+      q = described_class.new(capacity: 1)
+      q.enqueue('a')
+      expect(q.full?).to be(true)
+      expect(q.remaining_capacity).to eq(0)
+    end
+  end
 end
 
 RSpec.describe Philiprehberger::QueueStack::Stack do
@@ -925,6 +957,38 @@ end
       s.push('b')
       s.clear
       expect(s.empty?).to be true
+    end
+  end
+
+  describe '#capacity and #remaining_capacity' do
+    it 'returns nil for an unlimited stack' do
+      s = described_class.new
+      expect(s.capacity).to be_nil
+      expect(s.remaining_capacity).to be_nil
+    end
+
+    it 'returns the configured capacity for a bounded stack' do
+      s = described_class.new(capacity: 4)
+      expect(s.capacity).to eq(4)
+    end
+
+    it 'tracks remaining_capacity after push and pop' do
+      s = described_class.new(capacity: 3)
+      expect(s.remaining_capacity).to eq(3)
+      s.push('a')
+      expect(s.remaining_capacity).to eq(2)
+      s.push('b')
+      s.push('c')
+      expect(s.remaining_capacity).to eq(0)
+      s.pop
+      expect(s.remaining_capacity).to eq(1)
+    end
+
+    it 'returns 0 for remaining_capacity when at capacity' do
+      s = described_class.new(capacity: 1)
+      s.push('a')
+      expect(s.full?).to be(true)
+      expect(s.remaining_capacity).to eq(0)
     end
   end
 end
