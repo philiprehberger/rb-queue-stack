@@ -234,6 +234,46 @@ module Philiprehberger
           [@capacity - @items.length, 0].max
         end
       end
+
+      # Push many items onto the stack in order. The last element of +items+
+      # ends up on top. Each push respects capacity exactly as +push+ would.
+      #
+      # @param items [Array] the items to push, in order
+      # @return [void]
+      # @raise [ClosedError] if the stack has been closed
+      def push_all(items)
+        @mutex.synchronize do
+          raise ClosedError, 'cannot push on a closed stack' if @closed
+
+          items.each do |item|
+            @not_full.wait(@mutex) while @capacity && @items.length >= @capacity
+            raise ClosedError, 'cannot push on a closed stack' if @closed
+
+            @items.push(item)
+            @not_empty.signal
+          end
+        end
+      end
+
+      # Pop up to +max+ items from the top of the stack in LIFO order
+      # (top first). Non-blocking: returns an empty array if the stack is
+      # empty.
+      #
+      # @param max [Integer] maximum number of items to pop (must be a non-negative Integer)
+      # @return [Array] up to +max+ items, top first
+      # @raise [ArgumentError] if +max+ is not a non-negative Integer
+      def pop_batch(max)
+        raise ArgumentError, 'max must be a non-negative Integer' unless max.is_a?(Integer) && max >= 0
+
+        @mutex.synchronize do
+          count = [max, @items.length].min
+          next [] if count.zero?
+
+          batch = Array.new(count) { @items.pop }
+          @not_full.broadcast
+          batch
+        end
+      end
     end
   end
 end

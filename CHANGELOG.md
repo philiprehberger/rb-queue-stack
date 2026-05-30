@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-29
+
+### Added
+- `Queue#enqueue_all(items)` and `Stack#push_all(items)` — enqueue/push an array of items under a single mutex acquisition; each item respects capacity and `ClosedError` semantics
+- `Queue#dequeue_batch(max)` and `Stack#pop_batch(max)` — remove and return up to `max` items in one synchronized step; non-blocking; signals waiting producers
+
 ## [0.6.0] - 2026-04-27
 
 ### Added

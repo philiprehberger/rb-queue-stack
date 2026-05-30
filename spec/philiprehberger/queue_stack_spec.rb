@@ -991,4 +991,108 @@ end
       expect(s.remaining_capacity).to eq(0)
     end
   end
+
+  describe '#push_all and #pop_batch' do
+    it 'pushes items in order so the last becomes the top' do
+      s = described_class.new
+      s.push_all(%w[a b c])
+      expect(s.size).to eq(3)
+      expect(s.peek).to eq('c')
+    end
+
+    it 'pop_batch returns up to max items in LIFO order' do
+      s = described_class.new
+      s.push_all(%w[a b c d])
+      expect(s.pop_batch(2)).to eq(%w[d c])
+      expect(s.size).to eq(2)
+      expect(s.peek).to eq('b')
+    end
+
+    it 'pop_batch returns all items when max exceeds size' do
+      s = described_class.new
+      s.push_all(%w[a b])
+      expect(s.pop_batch(10)).to eq(%w[b a])
+      expect(s.empty?).to be(true)
+    end
+
+    it 'pop_batch with max=0 returns an empty array' do
+      s = described_class.new
+      s.push('a')
+      expect(s.pop_batch(0)).to eq([])
+      expect(s.size).to eq(1)
+    end
+
+    it 'pop_batch on empty stack returns an empty array' do
+      expect(described_class.new.pop_batch(5)).to eq([])
+    end
+
+    it 'pop_batch raises ArgumentError for negative max' do
+      expect { described_class.new.pop_batch(-1) }.to raise_error(ArgumentError)
+    end
+
+    it 'push_all raises ClosedError on a closed stack' do
+      s = described_class.new
+      s.close
+      expect { s.push_all(%w[a b]) }.to raise_error(Philiprehberger::QueueStack::ClosedError)
+    end
+  end
+end
+
+RSpec.describe Philiprehberger::QueueStack::Queue, 'batch operations' do
+  describe '#enqueue_all and #dequeue_batch' do
+    it 'enqueues items in FIFO order' do
+      q = described_class.new
+      q.enqueue_all(%w[a b c])
+      expect(q.size).to eq(3)
+      expect(q.peek).to eq('a')
+    end
+
+    it 'dequeue_batch returns up to max items in FIFO order' do
+      q = described_class.new
+      q.enqueue_all(%w[a b c d])
+      expect(q.dequeue_batch(2)).to eq(%w[a b])
+      expect(q.size).to eq(2)
+      expect(q.peek).to eq('c')
+    end
+
+    it 'dequeue_batch returns all items when max exceeds size' do
+      q = described_class.new
+      q.enqueue_all(%w[a b])
+      expect(q.dequeue_batch(10)).to eq(%w[a b])
+      expect(q.empty?).to be(true)
+    end
+
+    it 'dequeue_batch with max=0 returns an empty array' do
+      q = described_class.new
+      q.enqueue('a')
+      expect(q.dequeue_batch(0)).to eq([])
+      expect(q.size).to eq(1)
+    end
+
+    it 'dequeue_batch on empty queue returns an empty array' do
+      expect(described_class.new.dequeue_batch(5)).to eq([])
+    end
+
+    it 'dequeue_batch raises ArgumentError for negative max' do
+      expect { described_class.new.dequeue_batch(-1) }.to raise_error(ArgumentError)
+    end
+
+    it 'enqueue_all raises ClosedError on a closed queue' do
+      q = described_class.new
+      q.close
+      expect { q.enqueue_all(%w[a b]) }.to raise_error(Philiprehberger::QueueStack::ClosedError)
+    end
+
+    it 'enqueue_all respects capacity by blocking the producer until space frees up' do
+      q = described_class.new(capacity: 2)
+      consumer = Thread.new do
+        sleep 0.05
+        q.dequeue
+      end
+      q.enqueue_all(%w[a b c])
+      consumer.join
+      expect(q.size).to eq(2)
+      expect(q.to_a).to eq(%w[b c])
+    end
+  end
 end

@@ -246,6 +246,47 @@ module Philiprehberger
           [@capacity - @items.length, 0].max
         end
       end
+
+      # Enqueue many items in FIFO order. Each item is enqueued under the
+      # same Mutex acquisition; the call blocks while waiting for capacity
+      # exactly as +enqueue+ would for the individual elements that cannot
+      # fit immediately.
+      #
+      # @param items [Array] the items to enqueue, in order
+      # @return [void]
+      # @raise [ClosedError] if the queue has been closed
+      def enqueue_all(items)
+        @mutex.synchronize do
+          raise ClosedError, 'cannot enqueue on a closed queue' if @closed
+
+          items.each do |item|
+            @not_full.wait(@mutex) while @capacity && @items.length >= @capacity
+            raise ClosedError, 'cannot enqueue on a closed queue' if @closed
+
+            @items.push(item)
+            @not_empty.signal
+          end
+        end
+      end
+
+      # Remove and return up to +max+ items from the front of the queue.
+      # Non-blocking: returns an empty array if the queue is empty.
+      #
+      # @param max [Integer] maximum number of items to remove (must be a non-negative Integer)
+      # @return [Array] up to +max+ items in FIFO order
+      # @raise [ArgumentError] if +max+ is not a non-negative Integer
+      def dequeue_batch(max)
+        raise ArgumentError, 'max must be a non-negative Integer' unless max.is_a?(Integer) && max >= 0
+
+        @mutex.synchronize do
+          count = [max, @items.length].min
+          next [] if count.zero?
+
+          batch = @items.shift(count)
+          @not_full.broadcast
+          batch
+        end
+      end
     end
   end
 end

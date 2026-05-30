@@ -4,6 +4,8 @@
 [![Gem Version](https://badge.fury.io/rb/philiprehberger-queue_stack.svg)](https://rubygems.org/gems/philiprehberger-queue_stack)
 [![Last updated](https://img.shields.io/github/last-commit/philiprehberger/rb-queue-stack)](https://github.com/philiprehberger/rb-queue-stack/commits/main)
 
+![philiprehberger-queue_stack](https://raw.githubusercontent.com/philiprehberger/rb-queue-stack/main/package-card.webp)
+
 Thread-safe Queue and Stack with capacity limits and blocking operations
 
 ## Requirements
@@ -175,6 +177,21 @@ q.remaining_capacity  # => 50
 batch_size = [items.length, q.remaining_capacity].min
 ```
 
+### Batch Insertion and Draining
+
+`enqueue_all` / `push_all` insert an array of items under a single mutex acquisition. `dequeue_batch` / `pop_batch` remove up to `max` items at once and signal waiting producers. All four respect capacity and `ClosedError` semantics.
+
+```ruby
+q = Philiprehberger::QueueStack::Queue.new
+q.enqueue_all(%w[a b c d])
+q.dequeue_batch(2)  # => ["a", "b"]
+q.dequeue_batch(99) # => ["c", "d"]   (clamped to available)
+
+s = Philiprehberger::QueueStack::Stack.new
+s.push_all(%w[a b c])
+s.pop_batch(2)      # => ["c", "b"]   (LIFO: top first)
+```
+
 ## API
 
 ### `Queue`
@@ -183,8 +200,10 @@ batch_size = [items.length, q.remaining_capacity].min
 |--------|-------------|
 | `.new(capacity:)` | Create a queue with optional capacity limit |
 | `#enqueue(item)` | Add item to back (blocks if full) |
+| `#enqueue_all(items)` | Enqueue an array of items in FIFO order (blocks per-element if full) |
 | `#try_enqueue(item, timeout: nil)` | Non-blocking enqueue, returns true/false (waits up to timeout if given) |
 | `#dequeue` | Remove and return front item (blocks if empty) |
+| `#dequeue_batch(max)` | Remove and return up to `max` items in FIFO order (non-blocking) |
 | `#dequeue_if { \|item\| ... }` | Remove and return the front item only if the block is truthy (non-blocking) |
 | `#try_dequeue(timeout:)` | Dequeue with timeout, returns nil on timeout |
 | `#clear` | Remove all items without returning them |
@@ -207,8 +226,10 @@ batch_size = [items.length, q.remaining_capacity].min
 |--------|-------------|
 | `.new(capacity:)` | Create a stack with optional capacity limit |
 | `#push(item)` | Push item on top (blocks if full) |
+| `#push_all(items)` | Push an array of items in order; last becomes the top (blocks per-element if full) |
 | `#try_push(item, timeout: nil)` | Non-blocking push, returns true/false (waits up to timeout if given) |
 | `#pop` | Remove and return top item (blocks if empty) |
+| `#pop_batch(max)` | Pop up to `max` items, top first (non-blocking) |
 | `#pop_if { \|item\| ... }` | Remove and return the top item only if the block is truthy (non-blocking) |
 | `#try_pop(timeout:)` | Pop with timeout, returns nil on timeout |
 | `#clear` | Remove all items without returning them |
